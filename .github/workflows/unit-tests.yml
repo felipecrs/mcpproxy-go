@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: ["*"]
 
+# A new push to a PR cancels that PR's superseded run, freeing its runners.
+# Any other run is alone in its group, so a main run is never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # Build frontend once and share across all jobs
   build-frontend:
@@ -232,6 +238,10 @@ jobs:
 
     env:
       GO111MODULE: "on"
+      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
+      # Build the stdlib regexp and unicode packages without it; everything else,
+      # including all of our code, stays race-checked.
+      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
 
     strategy:
       matrix:
@@ -251,6 +261,11 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           cache: true
+          # Its own cache key: the default one is shared with every other job, and
+          # whichever finishes first saves it (a 71 MB cache without race objects).
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/unit-tests.yml
 
       - name: Download dependencies
         run: go mod download
@@ -392,11 +407,17 @@ jobs:
   # blocked-value tests also depend on the host (hostname, $HOME basename).
   test-shuffle:
     name: Unit Tests (shuffle)
+    # Advisory, so it does not hold a runner on every PR push.
+    if: github.event_name == 'push'
     needs: [build-frontend]
     runs-on: ubuntu-latest
 
     env:
       GO111MODULE: "on"
+      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
+      # Build the stdlib regexp and unicode packages without it; everything else,
+      # including all of our code, stays race-checked.
+      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
 
     steps:
       - name: Checkout code
@@ -407,6 +428,11 @@ jobs:
         with:
           go-version: "1.26"
           cache: true
+          # Its own cache key: the default one is shared with every other job, and
+          # whichever finishes first saves it (a 71 MB cache without race objects).
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/unit-tests.yml
 
       - name: Download dependencies
         run: go mod download
@@ -507,6 +533,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GO111MODULE: "on"
+      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
+      # Build the stdlib regexp and unicode packages without it; everything else,
+      # including all of our code, stays race-checked.
+      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
 
     steps:
       - name: Checkout code
@@ -517,6 +547,11 @@ jobs:
         with:
           go-version: "1.26"
           cache: true
+          # Its own cache key: the default one is shared with every other job, and
+          # whichever finishes first saves it (a 71 MB cache without race objects).
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/unit-tests.yml
 
       - name: Download dependencies
         run: go mod download

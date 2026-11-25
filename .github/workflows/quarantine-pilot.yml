@@ -52,6 +52,11 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
+      # Build the stdlib regexp and unicode packages without it; everything else,
+      # including all of our code, stays race-checked.
+      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
