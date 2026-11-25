@@ -412,8 +412,6 @@ jobs:
   # blocked-value tests also depend on the host (hostname, $HOME basename).
   test-shuffle:
     name: Unit Tests (shuffle)
-    # Advisory, so it does not hold a runner on every PR push.
-    if: github.event_name == 'push'
     needs: [build-frontend]
     runs-on: ubuntu-latest
 
