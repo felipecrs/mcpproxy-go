@@ -153,7 +153,24 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
         with:
           go-version: "1.26"
-          cache: true
+          cache: false  # Disable built-in cache to use explicit cache step below
+
+      - name: Clean Go module cache (macOS workaround)
+        if: runner.os == 'macOS'
+        run: |
+          # Remove potentially corrupted toolchain files
+          rm -rf ~/go/pkg/mod/golang.org/toolchain* || true
+
+      - name: Cache Go modules and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+            ~/AppData/Local/go-build
+          key: ${{ runner.os }}-go-1.26-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-1.26-
 
       - name: Download dependencies
         run: go mod download

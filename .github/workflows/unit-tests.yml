@@ -238,10 +238,9 @@ jobs:
 
     env:
       GO111MODULE: "on"
-      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
-      # Build the stdlib regexp and unicode packages without it; everything else,
-      # including all of our code, stays race-checked.
-      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
+      # Build the stdlib regexp without race instrumentation, a third of the test time.
+      # Our code stays race-checked, except a []byte that only regexp itself reads.
+      GOFLAGS: "-gcflags=regexp/...=-race=false"
 
     strategy:
       matrix:
@@ -306,11 +305,6 @@ jobs:
           if (Test-Path web/frontend) { Remove-Item -Recurse -Force web/frontend }
           New-Item -ItemType Directory -Force -Path web/frontend
           Copy-Item -Recurse frontend/dist web/frontend/
-
-      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
-      - name: Put test temp dirs on tmpfs
-        if: runner.os == 'Linux'
-        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       # Warm the tiktoken vocabulary ONCE, before the parallel test run.
       #
@@ -417,10 +411,9 @@ jobs:
 
     env:
       GO111MODULE: "on"
-      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
-      # Build the stdlib regexp and unicode packages without it; everything else,
-      # including all of our code, stays race-checked.
-      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
+      # Build the stdlib regexp without race instrumentation, a third of the test time.
+      # Our code stays race-checked, except a []byte that only regexp itself reads.
+      GOFLAGS: "-gcflags=regexp/...=-race=false"
 
     steps:
       - name: Checkout code
@@ -431,11 +424,6 @@ jobs:
         with:
           go-version: "1.26"
           cache: true
-          # Its own cache key: the default one is shared with every other job, and
-          # whichever finishes first saves it (a 71 MB cache without race objects).
-          cache-dependency-path: |
-            go.sum
-            .github/workflows/unit-tests.yml
 
       - name: Download dependencies
         run: go mod download
@@ -463,10 +451,6 @@ jobs:
           rm -rf web/frontend
           mkdir -p web/frontend
           cp -r frontend/dist web/frontend/
-
-      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
-      - name: Put test temp dirs on tmpfs
-        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       # Same tiktoken download race as in the "Unit Tests" job; see the comment
       # there. Warm the cache once so parallel test binaries never rename.
@@ -540,10 +524,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GO111MODULE: "on"
-      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
-      # Build the stdlib regexp and unicode packages without it; everything else,
-      # including all of our code, stays race-checked.
-      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
+      # Build the stdlib regexp without race instrumentation, a third of the test time.
+      # Our code stays race-checked, except a []byte that only regexp itself reads.
+      GOFLAGS: "-gcflags=regexp/...=-race=false"
 
     steps:
       - name: Checkout code
@@ -554,11 +537,6 @@ jobs:
         with:
           go-version: "1.26"
           cache: true
-          # Its own cache key: the default one is shared with every other job, and
-          # whichever finishes first saves it (a 71 MB cache without race objects).
-          cache-dependency-path: |
-            go.sum
-            .github/workflows/unit-tests.yml
 
       - name: Download dependencies
         run: go mod download
@@ -568,10 +546,6 @@ jobs:
 
       - name: Build server edition
         run: go build -tags server ./cmd/mcpproxy
-
-      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
-      - name: Put test temp dirs on tmpfs
-        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       # internal/server is now in the list below and constructs the tiktoken
       # tokenizer; warm the vocabulary once so parallel packages hit the cache

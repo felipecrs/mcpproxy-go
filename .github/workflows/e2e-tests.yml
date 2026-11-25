@@ -48,10 +48,6 @@ jobs:
 
     env:
       GO111MODULE: "on"
-      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
-      # Build the stdlib regexp and unicode packages without it; everything else,
-      # including all of our code, stays race-checked.
-      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
 
     strategy:
       matrix:
@@ -101,11 +97,6 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: go build -tags nogui -o mcpproxy ./cmd/mcpproxy
-
-      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
-      - name: Put test temp dirs on tmpfs
-        if: runner.os == 'Linux'
-        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       # Unit tests are not run here: unit-tests.yml runs a superset of them, with
       # -race, on the same runners and events.
@@ -186,14 +177,10 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: build-frontend
+    needs: [build-frontend, e2e-tests]
 
     env:
       GO111MODULE: "on"
-      # Race instrumentation makes the regexp-heavy TPA scoring up to 20x slower.
-      # Build the stdlib regexp and unicode packages without it; everything else,
-      # including all of our code, stays race-checked.
-      GOFLAGS: "-gcflags=regexp/...=-race=false -gcflags=unicode/...=-race=false"
 
     steps:
       - name: Checkout code
