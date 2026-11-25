@@ -307,6 +307,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path web/frontend
           Copy-Item -Recurse frontend/dist web/frontend/
 
+      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
+      - name: Put test temp dirs on tmpfs
+        if: runner.os == 'Linux'
+        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       # Warm the tiktoken vocabulary ONCE, before the parallel test run.
       #
       # tiktoken-go downloads the BPE on first use into a shared temp dir and
@@ -461,6 +466,10 @@ jobs:
           mkdir -p web/frontend
           cp -r frontend/dist web/frontend/
 
+      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
+      - name: Put test temp dirs on tmpfs
+        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       # Same tiktoken download race as in the "Unit Tests" job; see the comment
       # there. Warm the cache once so parallel test binaries never rename.
       - name: Warm the tiktoken vocabulary cache
@@ -561,6 +570,10 @@ jobs:
 
       - name: Build server edition
         run: go build -tags server ./cmd/mcpproxy
+
+      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
+      - name: Put test temp dirs on tmpfs
+        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       # internal/server is now in the list below and constructs the tiktoken
       # tokenizer; warm the vocabulary once so parallel packages hit the cache

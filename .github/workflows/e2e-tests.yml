@@ -102,6 +102,11 @@ jobs:
           CGO_ENABLED: "0"
         run: go build -tags nogui -o mcpproxy ./cmd/mcpproxy
 
+      # The tests fsync a lot (BBolt) and the runner's disk is slow at it.
+      - name: Put test temp dirs on tmpfs
+        if: runner.os == 'Linux'
+        run: printf "TMPDIR=/dev/shm\nGOTMPDIR=%s\n" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       # Unit tests are not run here: unit-tests.yml runs a superset of them, with
       # -race, on the same runners and events.
 

@@ -100,10 +100,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
+      # Once per OS: the tests run on the host, so the leg for the other GOARCH
+      # would run the very same ones.
+      RUN_TESTS: ${{ contains(fromJSON('["linux/amd64", "windows/amd64", "darwin/arm64"]'), format('{0}/{1}', matrix.goos, matrix.goarch)) }}
     strategy:
       matrix:
-        # run_tests is set once per OS: the tests run on the host, so a second leg
-        # for another GOARCH would run the very same ones.
         include:
           - os: ubuntu-latest
             goos: linux
@@ -111,7 +112,6 @@ jobs:
             cgo: "0"
             name: mcpproxy-linux-amd64
             archive_format: tar.gz
-            run_tests: true
           - os: ubuntu-latest
             goos: linux
             goarch: arm64
@@ -124,7 +124,6 @@ jobs:
             cgo: "1"
             name: mcpproxy-windows-amd64.exe
             archive_format: zip
-            run_tests: true
           - os: windows-latest
             goos: windows
             goarch: arm64
@@ -143,7 +142,6 @@ jobs:
             cgo: "1"
             name: mcpproxy-darwin-arm64
             archive_format: tar.gz
-            run_tests: true
 
     steps:
       - name: Checkout
@@ -180,7 +178,7 @@ jobs:
       # (bench/tscg/shim.mjs) and hard-fail (never skip) under CI per FR-006, so
       # the tscg runtime must be provisioned wherever `go test ./...` runs.
       - name: Set up Node.js (TSCG bench arm)
-        if: matrix.run_tests
+        if: env.RUN_TESTS == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: '22'
@@ -188,7 +186,7 @@ jobs:
           cache-dependency-path: bench/tscg/package-lock.json
 
       - name: Install pinned TSCG shim dependencies (FR-006)
-        if: matrix.run_tests
+        if: env.RUN_TESTS == 'true'
         shell: bash
         run: npm ci --prefix bench/tscg
 
@@ -199,14 +197,14 @@ jobs:
       # makes every later tokenizer construction a cache hit. Same fix as
       # unit-tests.yml.
       - name: Warm the tiktoken vocabulary cache
-        if: matrix.run_tests
+        if: env.RUN_TESTS == 'true'
         shell: bash
         run: go run ./bench/cmd/warmtiktoken
         env:
           TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/tiktoken
 
       - name: Run tests (skip binary E2E tests - not compatible with cross-compilation)
-        if: matrix.run_tests
+        if: env.RUN_TESTS == 'true'
         shell: bash
         run: |
           # On Windows, skip internal/server tests (E2E tests timeout after 11 minutes).
